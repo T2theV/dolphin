@@ -51,8 +51,13 @@ int CameraLogic::BusWrite(u8 slave_addr, u8 addr, int count, const u8* data_in)
   return RawWrite(&m_reg_data, addr, count, data_in);
 }
 
+/* float CameraLogic::CalculateDistanceLEDSeperation(float traved_adjust)
+{
+  return .1;
+}*/
+
 std::array<CameraPoint, CameraLogic::NUM_POINTS>
-CameraLogic::GetCameraPoints(const Common::Matrix44& transform, Common::Vec2 field_of_view)
+CameraLogic::GetCameraPoints(const Common::Matrix44& transform, Common::Vec2 field_of_view, double z_travel)
 {
   using Common::Matrix33;
   using Common::Matrix44;
@@ -60,8 +65,8 @@ CameraLogic::GetCameraPoints(const Common::Matrix44& transform, Common::Vec2 fie
   using Common::Vec4;
 
   const std::array<Vec3, 2> leds{
-      Vec3{-SENSOR_BAR_LED_SEPARATION / 2, 0, 0},
-      Vec3{SENSOR_BAR_LED_SEPARATION / 2, 0, 0},
+      Vec3{-(SENSOR_BAR_LED_SEPARATION + (float)z_travel) / 2, 0, 0},
+      Vec3{(SENSOR_BAR_LED_SEPARATION + (float)z_travel) / 2, 0, 0},
   };
 
   const auto camera_view =

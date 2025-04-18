@@ -134,7 +134,8 @@ public:
   void Reset();
   void DoState(PointerWrap& p);
   static std::array<CameraPoint, NUM_POINTS> GetCameraPoints(const Common::Matrix44& transform,
-                                                             Common::Vec2 field_of_view);
+                                                             Common::Vec2 field_of_view,
+                                                              double z_travel);
   void Update(const std::array<CameraPoint, NUM_POINTS>& camera_points);
   void SetEnabled(bool is_enabled);
 
@@ -184,5 +185,6 @@ private:
   // When disabled the camera does not respond on the bus.
   // Change is triggered by wiimote report 0x13.
   bool m_is_enabled = false;
+  //float CameraLogic::CalculateDistanceLEDSeperation(float traved_adjust);
 };
 }  // namespace WiimoteEmu

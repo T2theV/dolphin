@@ -29,7 +29,7 @@ GameListModel::GameListModel(QObject* parent) : QAbstractTableModel(parent)
   connect(&m_tracker, &GameTracker::GameUpdated, this, &GameListModel::UpdateGame);
   connect(&m_tracker, &GameTracker::GameRemoved, this, &GameListModel::RemoveGame);
   connect(&Settings::Instance(), &Settings::PathAdded, &m_tracker, &GameTracker::AddDirectory);
-  connect(&Settings::Instance(), &Settings::PathRemoved, &m_tracker, &GameTracker::RemoveDirectory);
+  connect(&Settings::Instance(), &Settings::PathRemoved, &m_tracker, &GameTracker::RemoveDirectoryL);
   connect(&Settings::Instance(), &Settings::GameListRefreshRequested, &m_tracker,
           &GameTracker::RefreshAll);
   connect(&Settings::Instance(), &Settings::TitleDBReloadRequested,

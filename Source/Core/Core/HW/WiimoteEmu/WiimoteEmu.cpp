@@ -477,6 +477,7 @@ GetPassthroughCameraPoints(ControllerEmu::IRPassthrough* ir_passthrough)
 void Wiimote::BuildDesiredWiimoteState(DesiredWiimoteState* target_state,
                                        SensorBarState sensor_bar_state)
 {
+  static double z_travel;
   // Hotkey / settings modifier
   // Data is later accessed in IsSideways and IsUpright
   m_hotkeys->UpdateState();
@@ -495,6 +496,11 @@ void Wiimote::BuildDesiredWiimoteState(DesiredWiimoteState* target_state,
   // Calibration values are 8-bit but we want 10-bit precision, so << 2.
   target_state->acceleration =
       ConvertAccelData(GetTotalAcceleration(), ACCEL_ZERO_G << 2, ACCEL_ONE_G << 2);
+  z_travel += .0005 * (target_state->acceleration.value.y - 512);
+  if (z_travel > .05)
+    z_travel = .1;
+  if (z_travel < -.05)
+    z_travel = -.1;
 
   // Calculate IR camera state.
   if (m_ir_passthrough->enabled)
@@ -506,7 +512,8 @@ void Wiimote::BuildDesiredWiimoteState(DesiredWiimoteState* target_state,
     target_state->camera_points = CameraLogic::GetCameraPoints(
         GetTotalTransformation(),
         Common::Vec2(m_fov_x_setting.GetValue(), m_fov_y_setting.GetValue()) / 360 *
-            float(MathUtil::TAU));
+            float(MathUtil::TAU),
+        z_travel);
   }
   else
   {

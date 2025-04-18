@@ -67,7 +67,7 @@ GameTracker::GameTracker(QObject* parent) : QFileSystemWatcher(parent)
     case CommandType::AddDirectory:
       AddDirectoryInternal(command.path);
       break;
-    case CommandType::RemoveDirectory:
+    case CommandType::RemoveDirectoryL:
       RemoveDirectoryInternal(command.path);
       break;
     case CommandType::UpdateDirectory:
@@ -195,9 +195,9 @@ void GameTracker::AddDirectory(const QString& dir)
   m_load_thread.EmplaceItem(Command{CommandType::AddDirectory, dir});
 }
 
-void GameTracker::RemoveDirectory(const QString& dir)
+void GameTracker::RemoveDirectoryL(const QString& dir)
 {
-  m_load_thread.EmplaceItem(Command{CommandType::RemoveDirectory, dir});
+  m_load_thread.EmplaceItem(Command{CommandType::RemoveDirectoryL, dir});
 }
 
 void GameTracker::RefreshAll()
@@ -216,7 +216,7 @@ void GameTracker::RefreshAll()
 
   for (const QString& dir : Settings::Instance().GetPaths())
   {
-    m_load_thread.EmplaceItem(Command{CommandType::RemoveDirectory, dir});
+    m_load_thread.EmplaceItem(Command{CommandType::RemoveDirectoryL, dir});
     m_load_thread.EmplaceItem(Command{CommandType::AddDirectory, dir});
   }
 

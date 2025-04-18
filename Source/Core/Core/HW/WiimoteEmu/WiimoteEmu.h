@@ -23,6 +23,10 @@
 
 class PointerWrap;
 
+//total travel for Z-Axis travel for moving pool cue in WiiPlay
+// METERS
+#define TOTAL_Z_TRAVEL 0.75 
+
 namespace ControllerEmu
 {
 class Attachments;

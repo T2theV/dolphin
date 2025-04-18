@@ -39,7 +39,7 @@ public:
   void Start();
 
   void AddDirectory(const QString& dir);
-  void RemoveDirectory(const QString& dir);
+  void RemoveDirectoryL(const QString& dir);
   void RefreshAll();
   void PurgeCache();
 
@@ -68,7 +68,7 @@ private:
     LoadCache,
     Start,
     AddDirectory,
-    RemoveDirectory,
+    RemoveDirectoryL,
     UpdateDirectory,
     UpdateFile,
     UpdateMetadata,
