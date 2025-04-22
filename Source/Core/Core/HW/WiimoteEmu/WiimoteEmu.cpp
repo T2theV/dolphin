@@ -496,7 +496,7 @@ void Wiimote::BuildDesiredWiimoteState(DesiredWiimoteState* target_state,
   // Calibration values are 8-bit but we want 10-bit precision, so << 2.
   target_state->acceleration =
       ConvertAccelData(GetTotalAcceleration(), ACCEL_ZERO_G << 2, ACCEL_ONE_G << 2);
-  z_travel += .0005 * (target_state->acceleration.value.y - 512);
+  z_travel += .00075 * (target_state->acceleration.value.y - 512);
   if (z_travel > .05)
     z_travel = .1;
   if (z_travel < -.05)
