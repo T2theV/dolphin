@@ -48,6 +48,8 @@
 #include "InputCommon/ControllerEmu/ControlGroup/ModifySettingsButton.h"
 #include "InputCommon/ControllerEmu/ControlGroup/Tilt.h"
 
+
+#define SEPERATION_MAX .1
 namespace WiimoteEmu
 {
 using namespace WiimoteCommon;
@@ -496,11 +498,14 @@ void Wiimote::BuildDesiredWiimoteState(DesiredWiimoteState* target_state,
   // Calibration values are 8-bit but we want 10-bit precision, so << 2.
   target_state->acceleration =
       ConvertAccelData(GetTotalAcceleration(), ACCEL_ZERO_G << 2, ACCEL_ONE_G << 2);
-  z_travel += .00075 * (target_state->acceleration.value.y - 512);
-  if (z_travel > .05)
-    z_travel = .1;
-  if (z_travel < -.05)
-    z_travel = -.1;
+  if (abs((target_state->acceleration.value.y - 512)) > 98)
+  {
+    z_travel += .0005 * (target_state->acceleration.value.y - 512);
+    if (z_travel > SEPERATION_MAX)
+      z_travel = SEPERATION_MAX;
+    if (z_travel < -SEPERATION_MAX)
+      z_travel = -SEPERATION_MAX;
+  }
 
   // Calculate IR camera state.
   if (m_ir_passthrough->enabled)
