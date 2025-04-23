@@ -24,7 +24,7 @@ endif()
 
 # Minimum OS X version.
 # This is inserted into the Info.plist as well.
-set(CMAKE_OSX_DEPLOYMENT_TARGET "10.15.0" CACHE STRING "")
+set(CMAKE_OSX_DEPLOYMENT_TARGET "11.0.0" CACHE STRING "")
 
 set(CMAKE_USER_MAKE_RULES_OVERRIDE "${CMAKE_CURRENT_SOURCE_DIR}/CMake/FlagsOverride.cmake")
 
@@ -149,6 +149,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   option(ENABLE_VTUNE "Enable Intel VTune integration for JIT code." OFF)
 
   if(NOT ANDROID)
+    option(ENABLE_HWDB "Enables the udev hardware database" ON)
     option(ENABLE_EVDEV "Enables the evdev controller backend" ON)
   endif()
 endif()
@@ -568,6 +569,16 @@ if(OPROFILING)
     add_definitions(-DUSE_OPROFILE=1)
   else()
     message(FATAL_ERROR "OProfile not found. Can't build profiling support.")
+  endif()
+endif()
+
+if(ENABLE_HWDB)
+  find_package(LIBUDEV REQUIRED)
+  if(LIBUDEV_FOUND)
+    message(STATUS "libudev found, enabling hardware database")
+    add_definitions(-DHAVE_LIBUDEV=1)
+  else()
+    message(FATAL_ERROR "Couldn't find libudev. Can't build hardware database.\nDisable ENABLE_HWDB if you wish to build without hardware database support")
   endif()
 endif()
 
