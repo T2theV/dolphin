@@ -20,7 +20,7 @@ public:
   explicit DolReader(const std::string& filename);
   explicit DolReader(File::IOFile file);
   explicit DolReader(std::vector<u8> buffer);
-  ~DolReader();
+  ~DolReader() override;
 
   bool IsValid() const override { return m_is_valid; }
   bool IsWii() const override { return m_is_wii; }
@@ -65,7 +65,7 @@ private:
   bool m_is_ancast;
 
   // Copy sections to internal buffers
-  bool Initialize(const std::vector<u8>& buffer);
+  bool Initialize(std::span<const u8> buffer);
 
   bool LoadAncastIntoMemory(Core::System& system) const;
 };

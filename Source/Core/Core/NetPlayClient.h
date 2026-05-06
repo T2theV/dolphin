@@ -13,7 +13,6 @@
 #include <string>
 #include <thread>
 #include <unordered_map>
-#include <utility>
 #include <vector>
 
 #include "Common/CommonTypes.h"
@@ -89,7 +88,7 @@ public:
   virtual void OnIndexRefreshFailed(std::string error) = 0;
 
   virtual void ShowChunkedProgressDialog(const std::string& title, u64 data_size,
-                                         const std::vector<int>& players) = 0;
+                                         std::span<const int> players) = 0;
   virtual void HideChunkedProgressDialog() = 0;
   virtual void SetChunkedProgress(int pid, u64 progress) = 0;
 
@@ -114,9 +113,9 @@ public:
   void ThreadFunc();
   void SendAsync(sf::Packet&& packet, u8 channel_id = DEFAULT_CHANNEL);
 
-  NetPlayClient(const std::string& address, const u16 port, NetPlayUI* dialog,
-                const std::string& name, const NetTraversalConfig& traversal_config);
-  ~NetPlayClient();
+  NetPlayClient(const std::string& address, const u16 port, NetPlayUI* dialog, std::string name,
+                const NetTraversalConfig& traversal_config);
+  ~NetPlayClient() override;
 
   std::vector<const Player*> GetPlayers();
   const NetSettings& GetNetSettings() const;
@@ -196,7 +195,7 @@ protected:
     std::recursive_mutex async_queue_write;
   } m_crit;
 
-  Common::SPSCQueue<AsyncQueueEntry, false> m_async_queue;
+  Common::SPSCQueue<AsyncQueueEntry> m_async_queue;
 
   std::array<Common::SPSCQueue<GCPadStatus>, 4> m_pad_buffer;
   std::array<Common::SPSCQueue<WiimoteEmu::SerializedWiimoteState>, 4> m_wiimote_buffer;

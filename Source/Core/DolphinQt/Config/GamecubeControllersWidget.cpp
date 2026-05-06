@@ -12,7 +12,6 @@
 
 #include <optional>
 #include <utility>
-#include <vector>
 
 #include "Core/ConfigManager.h"
 #include "Core/Core.h"
@@ -24,11 +23,8 @@
 #include "DolphinQt/Config/Mapping/GCPadWiiUConfigDialog.h"
 #include "DolphinQt/Config/Mapping/MappingWindow.h"
 #include "DolphinQt/QtUtils/NonDefaultQPushButton.h"
-#include "DolphinQt/QtUtils/SetWindowDecorations.h"
 #include "DolphinQt/QtUtils/SignalBlocking.h"
 #include "DolphinQt/Settings.h"
-
-#include "InputCommon/GCAdapter.h"
 
 using SIDeviceName = std::pair<SerialInterface::SIDevices, const char*>;
 static constexpr std::array s_gc_types = {
@@ -44,6 +40,7 @@ static constexpr std::array s_gc_types = {
 #endif
     SIDeviceName{SerialInterface::SIDEVICE_GC_GBA, _trans("GBA (TCP)")},
     SIDeviceName{SerialInterface::SIDEVICE_GC_KEYBOARD, _trans("Keyboard Controller")},
+    SIDeviceName{SerialInterface::SIDEVICE_AM_BASEBOARD, _trans("Triforce Baseboard")},
 };
 
 static std::optional<int> ToGCMenuIndex(const SerialInterface::SIDevices sidevice)
@@ -140,7 +137,6 @@ void GamecubeControllersWidget::OnGCPadConfigure(size_t index)
   case SerialInterface::SIDEVICE_WIIU_ADAPTER:
   {
     GCPadWiiUConfigDialog dialog(static_cast<int>(index), this);
-    SetQWidgetWindowDecorations(&dialog);
     dialog.exec();
     return;
   }
@@ -159,6 +155,9 @@ void GamecubeControllersWidget::OnGCPadConfigure(size_t index)
   case SerialInterface::SIDEVICE_GC_KEYBOARD:
     type = MappingWindow::Type::MAPPING_GC_KEYBOARD;
     break;
+  case SerialInterface::SIDEVICE_AM_BASEBOARD:
+    type = MappingWindow::Type::MAPPING_AM_BASEBOARD;
+    break;
   default:
     return;
   }
@@ -166,7 +165,6 @@ void GamecubeControllersWidget::OnGCPadConfigure(size_t index)
   MappingWindow* window = new MappingWindow(this, type, static_cast<int>(index));
   window->setAttribute(Qt::WA_DeleteOnClose, true);
   window->setWindowModality(Qt::WindowModality::WindowModal);
-  SetQWidgetWindowDecorations(window);
   window->show();
 }
 
@@ -205,10 +203,6 @@ void GamecubeControllersWidget::SaveSettings()
       }
     }
   }
-  if (GCAdapter::UseAdapter())
-    GCAdapter::StartScanThread();
-  else
-    GCAdapter::StopScanThread();
 
   SConfig::GetInstance().SaveSettings();
 }

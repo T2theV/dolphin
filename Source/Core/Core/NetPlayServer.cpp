@@ -12,8 +12,8 @@
 #include <optional>
 #include <ranges>
 #include <string>
+#include <string_view>
 #include <thread>
-#include <type_traits>
 #include <unordered_set>
 #include <utility>
 #include <vector>
@@ -51,13 +51,10 @@
 #endif
 #include "Core/HW/GCMemcard/GCMemcard.h"
 #include "Core/HW/GCMemcard/GCMemcardDirectory.h"
-#include "Core/HW/GCMemcard/GCMemcardRaw.h"
 #include "Core/HW/Sram.h"
 #include "Core/HW/WiiSave.h"
 #include "Core/HW/WiiSaveStructs.h"
 #include "Core/HW/WiimoteEmu/DesiredWiimoteState.h"
-#include "Core/HW/WiimoteEmu/WiimoteEmu.h"
-#include "Core/HW/WiimoteReal/WiimoteReal.h"
 #include "Core/IOS/ES/ES.h"
 #include "Core/IOS/FS/FileSystem.h"
 #include "Core/IOS/IOS.h"
@@ -69,7 +66,6 @@
 #include "DiscIO/Enums.h"
 #include "DiscIO/RiivolutionPatcher.h"
 
-#include "InputCommon/ControllerEmu/ControlGroup/Attachments.h"
 #include "InputCommon/GCPadStatus.h"
 #include "InputCommon/InputConfig.h"
 
@@ -77,7 +73,6 @@
 
 #if !defined(_WIN32)
 #include <sys/socket.h>
-#include <sys/types.h>
 #ifdef __HAIKU__
 #define _BSD_SOURCE
 #include <bsd/ifaddrs.h>
@@ -290,8 +285,8 @@ void NetPlayServer::ThreadFunc()
         auto& e = m_async_queue.Front();
         if (e.target_mode == TargetMode::Only)
         {
-          if (m_players.contains(e.target_pid))
-            Send(m_players.at(e.target_pid).socket, e.packet, e.channel_id);
+          if (const auto it = m_players.find(e.target_pid); it != m_players.end())
+            Send(it->second.socket, e.packet, e.channel_id);
         }
         else
         {
@@ -794,9 +789,10 @@ unsigned int NetPlayServer::OnData(sf::Packet& packet, Client& player)
     u32 cid;
     packet >> cid;
 
-    if (m_chunked_data_complete_count.contains(cid))
+    if (const auto it = m_chunked_data_complete_count.find(cid);
+        it != m_chunked_data_complete_count.end())
     {
-      m_chunked_data_complete_count[cid]++;
+      it->second++;
       m_chunked_data_complete_event.Set();
     }
   }
@@ -839,8 +835,11 @@ unsigned int NetPlayServer::OnData(sf::Packet& packet, Client& player)
     if (m_host_input_authority)
     {
       // Prevent crash before game stop if the golfer disconnects
-      if (m_current_golfer != 0 && m_players.contains(m_current_golfer))
-        Send(m_players.at(m_current_golfer).socket, spac);
+      if (m_current_golfer != 0)
+      {
+        if (const auto it = m_players.find(m_current_golfer); it != m_players.end())
+          Send(it->second.socket, spac);
+      }
     }
     else
     {
@@ -1376,6 +1375,8 @@ bool NetPlayServer::SetupNetSettings()
   settings.allow_sd_writes = Config::Get(Config::MAIN_ALLOW_SD_WRITES);
   settings.oc_enable = Config::Get(Config::MAIN_OVERCLOCK_ENABLE);
   settings.oc_factor = Config::Get(Config::MAIN_OVERCLOCK);
+  settings.vi_oc_enable = Config::Get(Config::MAIN_VI_OVERCLOCK_ENABLE);
+  settings.vi_oc_factor = Config::Get(Config::MAIN_VI_OVERCLOCK);
 
   for (ExpansionInterface::Slot slot : ExpansionInterface::SLOTS)
   {
@@ -1419,6 +1420,7 @@ bool NetPlayServer::SetupNetSettings()
   settings.divide_by_zero_exceptions = Config::Get(Config::MAIN_DIVIDE_BY_ZERO_EXCEPTIONS);
   settings.fprf = Config::Get(Config::MAIN_FPRF);
   settings.accurate_nans = Config::Get(Config::MAIN_ACCURATE_NANS);
+  settings.accurate_fmadds = Config::Get(Config::MAIN_ACCURATE_FMADDS);
   settings.disable_icache = Config::Get(Config::MAIN_DISABLE_ICACHE);
   settings.sync_on_skip_idle = Config::Get(Config::MAIN_SYNC_ON_SKIP_IDLE);
   settings.sync_gpu = Config::Get(Config::MAIN_SYNC_GPU);
@@ -1603,6 +1605,8 @@ bool NetPlayServer::StartGame()
   spac << m_settings.allow_sd_writes;
   spac << m_settings.oc_enable;
   spac << m_settings.oc_factor;
+  spac << m_settings.vi_oc_enable;
+  spac << m_settings.vi_oc_factor;
 
   for (auto slot : ExpansionInterface::SLOTS)
     spac << static_cast<int>(m_settings.exi_device[slot]);
@@ -2052,7 +2056,7 @@ bool NetPlayServer::SyncCodes()
   }
 
   // Find all INI files
-  const auto game_id = game->GetGameID();
+  const std::string_view game_id = game->GetGameID();
   const auto revision = game->GetRevision();
   Common::IniFile globalIni;
   for (const std::string& filename : ConfigLoaders::GetGameIniFilenames(game_id, revision))

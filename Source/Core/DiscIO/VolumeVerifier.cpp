@@ -5,16 +5,17 @@
 
 #include <algorithm>
 #include <future>
-#include <limits>
 #include <memory>
 #include <optional>
 #include <string>
 #include <string_view>
-#include <unordered_set>
 
 #include <mbedtls/md5.h>
+#include <mz.h>
+#include <mz_strm.h>
+#include <mz_zip.h>
+#include <mz_zip_rw.h>
 #include <pugixml.hpp>
-#include <unzip.h>
 
 #include "Common/Align.h"
 #include "Common/Assert.h"
@@ -157,25 +158,28 @@ RedumpVerifier::DownloadStatus RedumpVerifier::DownloadDatfile(const std::string
 
 std::vector<u8> RedumpVerifier::ReadDatfile(const std::string& system)
 {
-  unzFile file = unzOpen(GetPathForSystem(system).c_str());
-  if (!file)
+  void* zip_reader = mz_zip_reader_create();
+  if (!zip_reader)
     return {};
 
-  Common::ScopeGuard file_guard{[&] { unzClose(file); }};
+  Common::ScopeGuard file_guard{[&] { mz_zip_reader_delete(&zip_reader); }};
+
+  if (mz_zip_reader_open_file(zip_reader, GetPathForSystem(system).c_str()) != MZ_OK)
+    return {};
 
   // Check that the zip file contains exactly one file
-  if (unzGoToFirstFile(file) != UNZ_OK)
+  if (mz_zip_reader_goto_first_entry(zip_reader) != MZ_OK)
     return {};
-  if (unzGoToNextFile(file) != UNZ_END_OF_LIST_OF_FILE)
+  if (mz_zip_reader_goto_next_entry(zip_reader) != MZ_END_OF_LIST)
     return {};
 
   // Read the file
-  if (unzGoToFirstFile(file) != UNZ_OK)
+  if (mz_zip_reader_goto_first_entry(zip_reader) != MZ_OK)
     return {};
-  unz_file_info file_info;
-  unzGetCurrentFileInfo(file, &file_info, nullptr, 0, nullptr, 0, nullptr, 0);
-  std::vector<u8> data(file_info.uncompressed_size);
-  if (!Common::ReadFileFromZip(file, &data))
+  mz_zip_file* file_info;
+  mz_zip_reader_entry_get_info(zip_reader, &file_info);
+  std::vector<u8> data(file_info->uncompressed_size);
+  if (!Common::ReadFileFromZip(zip_reader, data.data(), file_info->uncompressed_size))
     return {};
 
   return data;
@@ -209,7 +213,7 @@ static std::vector<u8> ParseHash(const char* str)
   return hash;
 }
 
-std::vector<RedumpVerifier::PotentialMatch> RedumpVerifier::ScanDatfile(const std::vector<u8>& data,
+std::vector<RedumpVerifier::PotentialMatch> RedumpVerifier::ScanDatfile(std::span<const u8> data,
                                                                         const std::string& system)
 {
   pugi::xml_document doc;

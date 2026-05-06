@@ -4,11 +4,10 @@
 #include "DiscIO/VolumeWad.h"
 
 #include <algorithm>
-#include <cstddef>
-#include <cstring>
 #include <map>
 #include <memory>
 #include <optional>
+#include <span>
 #include <string>
 #include <utility>
 #include <vector>
@@ -19,7 +18,6 @@
 #include "Common/Crypto/AES.h"
 #include "Common/Crypto/SHA1.h"
 #include "Common/Logging/Log.h"
-#include "Common/MsgHandler.h"
 #include "Common/StringUtil.h"
 #include "Core/IOS/IOSC.h"
 #include "DiscIO/Blob.h"
@@ -152,7 +150,7 @@ std::vector<u64> VolumeWAD::GetContentOffsets() const
 }
 
 bool VolumeWAD::CheckContentIntegrity(const IOS::ES::Content& content,
-                                      const std::vector<u8>& encrypted_data,
+                                      std::span<const u8> encrypted_data,
                                       const IOS::ES::TicketReader& ticket) const
 {
   if (encrypted_data.size() != Common::AlignUp(content.size, 0x40))
@@ -250,7 +248,7 @@ std::string VolumeWAD::GetMakerID(const Partition& partition) const
   if (!Common::IsPrintableCharacter(temp[0]) || !Common::IsPrintableCharacter(temp[1]))
     return "00";
 
-  return DecodeString(temp);
+  return FilterGameID(temp);
 }
 
 std::optional<u64> VolumeWAD::GetTitleID(const Partition& partition) const

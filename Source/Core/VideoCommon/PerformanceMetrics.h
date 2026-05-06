@@ -7,6 +7,7 @@
 #include <deque>
 
 #include "Common/CommonTypes.h"
+#include "Common/HookableEvent.h"
 #include "VideoCommon/PerformanceTracker.h"
 
 namespace Core
@@ -17,7 +18,7 @@ class System;
 class PerformanceMetrics
 {
 public:
-  PerformanceMetrics() = default;
+  PerformanceMetrics();
   ~PerformanceMetrics() = default;
 
   PerformanceMetrics(const PerformanceMetrics&) = delete;
@@ -41,6 +42,9 @@ public:
   double GetSpeed() const;
   double GetMaxSpeed() const;
 
+  // Call from any thread.
+  void SetLatestFramePresentationOffset(DT offset);
+
   // ImGui Functions
   void DrawImGuiStats(const float backbuffer_scale);
 
@@ -53,6 +57,8 @@ private:
   std::atomic<double> m_speed{};
   std::atomic<double> m_max_speed{};
 
+  std::atomic<DT> m_frame_presentation_offset{};
+
   struct PerfSample
   {
     TimePoint clock_time;
@@ -62,6 +68,6 @@ private:
 
   std::deque<PerfSample> m_samples;
   DT m_time_sleeping{};
-};
 
-extern PerformanceMetrics g_perf_metrics;
+  Common::EventHook m_state_change_hook;
+};

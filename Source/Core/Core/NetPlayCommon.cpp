@@ -116,7 +116,7 @@ bool CompressFolderIntoPacket(const std::string& folder_path, sf::Packet& packet
   return CompressFolderIntoPacketInternal(File::ScanDirectoryTree(folder_path, true), packet);
 }
 
-bool CompressBufferIntoPacket(const std::vector<u8>& in_buffer, sf::Packet& packet)
+bool CompressBufferIntoPacket(std::span<const u8> in_buffer, sf::Packet& packet)
 {
   const u64 size = in_buffer.size();
   packet << size;
@@ -231,10 +231,10 @@ static bool DecompressPacketIntoFolderInternal(sf::Packet& packet, const std::st
     std::string name;
     packet >> name;
 
-    if (name.find('/') != std::string::npos)
+    if (name.contains('/'))
       return false;
 #ifdef _WIN32
-    if (name.find('\\') != std::string::npos)
+    if (name.contains('\\'))
       return false;
 #endif
     if (std::ranges::all_of(name, [](char c) { return c == '.'; }))

@@ -124,7 +124,7 @@ private:
   PIMAGE_DATA_DIRECTORY directories;
 };
 
-void CompatPatchesInstall(LdrWatcher* watcher)
+static void CompatPatchesInstall(LdrWatcher* watcher)
 {
   watcher->Install({{L"EZFRD64.dll", L"811EZFRD64.DLL"}, [](const LdrDllLoadEvent& event) {
                       // *EZFRD64 is included in software packages for cheapo third-party gamepads
@@ -155,6 +155,6 @@ int __cdecl EnableCompatPatches()
 // referencing it doesn't require ugly decorated names.
 // Use /include:enableCompatPatches linker flag to enable this.
 extern "C" {
-__declspec(allocate(".CRT$XCZ")) decltype(&EnableCompatPatches)
-    enableCompatPatches = EnableCompatPatches;
+__declspec(allocate(".CRT$XCZ")) decltype(&EnableCompatPatches) enableCompatPatches =
+    EnableCompatPatches;
 }

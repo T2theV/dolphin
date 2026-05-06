@@ -7,7 +7,7 @@
 
 // UniqueBuffer<T> and SharedBuffer<T> are a lighter alternative to std::vector<T>.
 // The main benefit is that elements are not value-initialized like in vector.
-// That can be quite a bit of unecessary overhead when allocating a large buffer.
+// That can be quite a bit of unnecessary overhead when allocating a large buffer.
 
 namespace Common
 {
@@ -40,6 +40,10 @@ public:
 
   void assign(PtrType ptr, size_type new_size) { BufferBase{std::move(ptr), new_size}.swap(*this); }
   void reset(size_type new_size = 0) { BufferBase{new_size}.swap(*this); }
+  void clear() { reset(); }
+
+  // Resize is purposely not provided as it often unnecessarily copies data about to be overwritten.
+  void resize(std::size_t) = delete;
 
   std::pair<PtrType, size_type> extract()
   {
