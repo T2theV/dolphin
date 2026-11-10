@@ -4,6 +4,7 @@
 #include "Core/HW/WiimoteEmu/WiimoteEmu.h"
 
 #include <algorithm>
+#include <cmath>
 #include <fstream>
 #include <memory>
 #include <optional>
@@ -60,6 +61,18 @@ constexpr float SEPARATION_MAX = 0.1f;
 constexpr float Z_TRAVEL_GAIN =
     0.0005f * float((WiimoteEmu::Wiimote::ACCEL_ONE_G - WiimoteEmu::Wiimote::ACCEL_ZERO_G) << 2) /
     float(MathUtil::GRAVITY_ACCELERATION);
+// Stroke detection on the depth axis: only integrate while the gravity-removed
+// acceleration is large enough to be a real stroke. A held tilt / hand jitter is small
+// and sustained, so it stays below the on-threshold and never accumulates. The lower
+// off-threshold is hysteresis to avoid chatter at the boundary. Units: g.
+constexpr float STROKE_ON_G = 0.50f;   // start stroking above this
+constexpr float STROKE_OFF_G = 0.25f;  // stop stroking below this
+constexpr float STROKE_ON = STROKE_ON_G * float(MathUtil::GRAVITY_ACCELERATION);
+constexpr float STROKE_OFF = STROKE_OFF_G * float(MathUtil::GRAVITY_ACCELERATION);
+// Return-to-rest: while not stroking, z-travel decays toward 0 (the cue returns to rest
+// and the sensor bar returns to its normal width), so a held offset can't persist.
+// Fraction of the current travel retained per 200 Hz frame; 1.0 disables the decay.
+constexpr float Z_TRAVEL_DECAY = 0.95f;
 }  // namespace
 
 namespace WiimoteEmu
@@ -214,6 +227,7 @@ void Wiimote::Reset()
 
   m_imu_cursor_state = {};
   m_z_travel = {};
+  m_in_stroke = false;
 }
 
 Wiimote::Wiimote(const unsigned int index) : m_index(index), m_bt_device_index(index)
@@ -508,16 +522,30 @@ void Wiimote::BuildDesiredWiimoteState(DesiredWiimoteState* target_state,
       ConvertAccelData(GetTotalAcceleration(), ACCEL_ZERO_G << 2, ACCEL_ONE_G << 2);
   // Accumulate depth (TV-facing) travel from the stroke-axis acceleration with gravity
   // removed: subtracting the default gravity rotated into the remote frame by the
-  // current orientation leaves exactly the swing/shake (stroke) acceleration, so a
-  // still-held remote reads 0 at any tilt and no raw-data threshold is needed. The
-  // result is composed in as a pure translation into the dual quaternion.
+  // current orientation leaves the swing/shake (stroke) acceleration. A stroke detector
+  // (hysteresis on |a|) then integrates only real transients, so a held tilt / hand
+  // jitter never accumulates, and between strokes the travel decays back to rest so the
+  // pointers can't stay separated. Composed in as a pure translation into the
+  // dual quaternion.
   const auto gravity_body =
       GetOrientation() *
       GetTransformation().Transform(Common::Vec3{0, 0, float(GRAVITY_ACCELERATION)}, 0);
   const float a_stroke = GetTotalAcceleration().y - gravity_body.y;
-  m_z_travel = Common::DualQuaternion::TranslateZ(Z_TRAVEL_GAIN * a_stroke) * m_z_travel;
+
+  // Stroke detector: enter on a large transient, exit only after it falls well below.
+  if (!m_in_stroke && std::abs(a_stroke) >= STROKE_ON)
+    m_in_stroke = true;
+  else if (m_in_stroke && std::abs(a_stroke) < STROKE_OFF)
+    m_in_stroke = false;
+
+  // Integrate a real stroke as a translation increment; otherwise decay to rest.
+  float z = m_z_travel.TranslationZ();
+  if (m_in_stroke)
+    z += Z_TRAVEL_GAIN * a_stroke;
+  else
+    z *= Z_TRAVEL_DECAY;
   m_z_travel = Common::DualQuaternion::TranslateZ(
-      std::clamp(m_z_travel.TranslationZ(), -SEPARATION_MAX, SEPARATION_MAX));
+      std::clamp(z, -SEPARATION_MAX, SEPARATION_MAX));
 
   // Calculate IR camera state.
   if (m_ir_passthrough->enabled.GetValue() && m_ir_passthrough->AreInputsBound())

@@ -354,5 +354,8 @@ private:
   // Travel of the IR pointer accumulated along the depth (TV-facing) axis, held as a
   // pure-translation dual quaternion (identity rotation, translation in the dual part).
   Common::DualQuaternion m_z_travel;
+  // True while a depth-axis stroke is in progress (see the stroke detector in
+  // BuildDesiredWiimoteState). Gates the integration so a held tilt never accumulates.
+  bool m_in_stroke = false;
 };
 }  // namespace WiimoteEmu
